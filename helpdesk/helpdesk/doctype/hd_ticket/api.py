@@ -11,9 +11,6 @@ from helpdesk.utils import check_permissions, get_customer, is_agent
 
 @frappe.whitelist()
 def new(doc, attachments=[],email_id = None,cc = None,bcc = None):
-	print('-------------------')
-	print (cc)
-	print(bcc)
 	if email_id:
 		contact = frappe.db.get_all("Contact",fields = ['name'],filters = {'email_id':email_id})
 		if contact:
