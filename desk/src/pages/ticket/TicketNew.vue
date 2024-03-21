@@ -13,7 +13,28 @@
         @change="templateFields[field.fieldname] = $event.value"
       />
     </div>
-    <div class="m-5">
+    <div class="ml-5 mt-5 mb-3 flex gap-x-3">
+      <FormControl
+        v-model="email_id"
+        type="email"
+        label="TO :"
+        placeholder="hello@example.com"
+      />
+      <FormControl
+        v-model="cc"
+        type="email"
+        label="CC :"
+        placeholder="hello@example.com"
+      />
+      <FormControl
+        v-model="bcc"
+        type="email"
+        label="BCC :"
+        placeholder="hello@example.com"
+      />
+    </div>
+
+    <div class="mb-5 ml-5">
       <FormControl
         v-model="subject"
         type="text"
@@ -68,6 +89,9 @@ const props = withDefaults(defineProps<P>(), {
 const route = useRoute();
 const router = useRouter();
 const subject = ref("");
+const email_id = ref("");
+const cc = ref("");
+const bcc = ref("");
 const description = ref("");
 const attachments = ref([]);
 const templateFields = reactive({});
@@ -94,6 +118,9 @@ const ticket = createResource({
       ...templateFields,
     },
     attachments: attachments.value,
+    email_id: email_id.value,
+    cc: cc.value,
+    bcc: bcc.value,
   }),
   validate: (params) => {
     const fields = visibleFields.value.filter((f) => f.required);
