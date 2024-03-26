@@ -22,7 +22,9 @@ def new(doc, attachments=[],email_id = None,cc = None,bcc = None):
 			new_contact.status = 'Passive'
 			new_contact.email_id = email_id
 			new_contact.save(ignore_permissions = True)
-			doc["contact"] = contact[0]['name']
+			new_contact.append("email_ids",{"email_id":email_id,"is_primary":1})
+			new_contact.save(ignore_permissions = True)
+			doc["contact"] = new_contact.name
 	doc["doctype"] = "HD Ticket"
 	doc["via_customer_portal"] = bool(frappe.session.user)
 	d = frappe.get_doc(doc).insert()
