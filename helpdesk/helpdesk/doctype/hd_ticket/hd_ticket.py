@@ -434,7 +434,7 @@ class HDTicket(Document):
 
 	@frappe.whitelist()
 	def reply_via_agent(
-		self, message: str, cc: str = None, bcc: str = None, attachments: List[str] = []
+		self, message: str, cc: str = None, bcc = None, attachments: List[str] = []
 	):
 		contact = frappe.get_doc("Contact",self.contact)
 		skip_email_workflow = self.skip_email_workflow()
