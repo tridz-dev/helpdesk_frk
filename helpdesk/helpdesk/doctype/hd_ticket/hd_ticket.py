@@ -538,7 +538,7 @@ class HDTicket(Document):
 			frappe.throw(_(e))
 
 	@frappe.whitelist()
-	def create_communication_via_contact(self, message, attachments=[]):
+	def create_communication_via_contact(self, message, attachments=[],cc = None,bcc = None):
 		if self.status == "Replied":
 			self.status = "Open"
 			log_ticket_activity(self.name, "set status to Open")
@@ -549,6 +549,8 @@ class HDTicket(Document):
 		c.communication_medium = "Email"
 		c.sent_or_received = "Received"
 		c.email_status = "Open"
+		c.cc = cc
+		c.bcc = bcc
 		c.subject = "Re: " + self.subject
 		c.sender = frappe.session.user
 		c.content = message

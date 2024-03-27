@@ -13,35 +13,6 @@
         @change="templateFields[field.fieldname] = $event.value"
       />
     </div>
-    <div class="ml-5 mt-5 mb-3 flex gap-x-3">
-      <FormControl
-        v-model="email_id"
-        type="email"
-        label="TO :"
-        placeholder="hello@example.com"
-      />
-      <FormControl
-        v-model="cc"
-        type="email"
-        label="CC :"
-        placeholder="hello@example.com"
-      />
-      <FormControl
-        v-model="bcc"
-        type="email"
-        label="BCC :"
-        placeholder="hello@example.com"
-      />
-    </div>
-
-    <div class="mb-5 ml-5">
-      <FormControl
-        v-model="subject"
-        type="text"
-        label="Subject"
-        placeholder="A short description"
-      />
-    </div>
     <TicketNewArticles :search="subject" class="mx-5 mb-5" />
     <span class="mx-5 mb-5">
       <TicketTextEditor
@@ -51,6 +22,71 @@
         placeholder="Detailed explanation"
         expand
       >
+        <template #top-right>
+          <span class="flex gap-2">
+            <Button
+              v-if="mode === Mode.Response"
+              label="CC"
+              :theme="showCc ? 'blue' : 'gray'"
+              variant="subtle"
+              @click="() => (showCc = !showCc)"
+            />
+            <Button
+              v-if="mode === Mode.Response"
+              label="BCC"
+              :theme="showBcc ? 'blue' : 'gray'"
+              variant="subtle"
+              @click="() => (showBcc = !showBcc)"
+            />
+            <TabButtons
+              v-model="mode"
+              :buttons="Object.values(Mode).map((m) => ({ label: m }))"
+            />
+          </span>
+        </template>
+        <template v-if="mode == Mode.Response" #top-bottom>
+          <div class="my-3 flex flex-col gap-y-3">
+            <FormControl
+              v-model="email_id"
+              type="email"
+              label="TO :"
+              placeholder="hello@example.com"
+              class="w-1/6"
+            />
+            <FormControl
+              v-if="showCc"
+              v-model="cc"
+              type="email"
+              label="CC :"
+              placeholder="hello@example.com"
+              class="w-1/6"
+            />
+            <FormControl
+              v-if="showBcc"
+              v-model="bcc"
+              type="email"
+              label="BCC :"
+              placeholder="hello@example.com"
+              class="w-1/6"
+            />
+            <FormControl
+              v-model="subject"
+              type="text"
+              label="Subject"
+              placeholder="A short description"
+            />
+          </div>
+        </template>
+        <template v-else #top-bottom>
+          <div class="my-3 flex flex-col gap-y-3">
+            <FormControl
+              v-model="subject"
+              type="text"
+              label="Subject"
+              placeholder="A short description"
+            />
+          </div>
+        </template>
         <template #bottom-right>
           <Button
             label="Submit"
@@ -70,7 +106,13 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createResource, usePageMeta, Button, FormControl } from "frappe-ui";
+import {
+  createResource,
+  usePageMeta,
+  Button,
+  FormControl,
+  TabButtons,
+} from "frappe-ui";
 import sanitizeHtml from "sanitize-html";
 import { isEmpty } from "lodash";
 import { useError } from "@/composables/error";
@@ -81,6 +123,11 @@ import TicketTextEditor from "./TicketTextEditor.vue";
 
 interface P {
   templateId?: string;
+}
+
+enum Mode {
+  Comment = "Comment",
+  Response = "Response",
 }
 
 const props = withDefaults(defineProps<P>(), {
@@ -95,6 +142,9 @@ const bcc = ref("");
 const description = ref("");
 const attachments = ref([]);
 const templateFields = reactive({});
+const showCc = ref(false);
+const showBcc = ref(false);
+const mode = ref(Mode.Comment);
 
 const template = createResource({
   url: "helpdesk.helpdesk.doctype.hd_ticket_template.api.get_one",
