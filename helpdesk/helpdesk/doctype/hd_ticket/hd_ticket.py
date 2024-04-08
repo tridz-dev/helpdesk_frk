@@ -556,7 +556,7 @@ class HDTicket(Document):
 			c.email_status = "Open"
 			c.cc = cc
 			c.bcc = bcc
-			c.subject = "Re: " + self.subject
+			c.subject = self.subject
 			c.sender = frappe.session.user
 			c.content = message
 			c.status = "Linked"
@@ -578,7 +578,7 @@ class HDTicket(Document):
 			contact = frappe.get_doc("Contact",self.contact)
 			skip_email_workflow = self.skip_email_workflow()
 			medium = "" if skip_email_workflow else "Email"
-			subject = f"Re: {self.subject} (#{self.name})"
+			subject = f"{self.subject} (#{self.name})"
 			sender = frappe.session.user
 			# recipients = self.raised_by
 			recipients = contact.email_id
