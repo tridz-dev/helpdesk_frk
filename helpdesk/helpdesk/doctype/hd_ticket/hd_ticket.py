@@ -680,7 +680,6 @@ class HDTicket(Document):
 					bcc=bcc,
 					cc=cc,
 					communication=communication.name,
-					# delayed=send_delayed,
 	 				delayed=False,
 					expose_recipients="header",
 					message=message,
