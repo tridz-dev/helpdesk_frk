@@ -460,6 +460,10 @@ class HDTicket(Document):
 	def reply_via_agent(
 		self, message: str, cc: str = None, bcc: str = None, attachments: List[str] = []
 	):
+
+		print('----------------------')
+		print(cc)
+		print(bcc)
 		if self.contact:
 			contact = frappe.get_doc("Contact",self.contact)
 			recipients = contact.email_id
@@ -467,11 +471,16 @@ class HDTicket(Document):
 			recipients = self.raised_by
 		skip_email_workflow = self.skip_email_workflow()
 		medium = "" if skip_email_workflow else "Email"
-		subject = f"Re: {self.subject} (#{self.name})"
+		subject = f"Re: {self.subject} "
 		sender = frappe.session.user
 		recipients = contact.email_id
 		sender_email = None if skip_email_workflow else self.sender_email()
 		last_communication = self.get_last_communication()
+		user = frappe.get_doc("User",frappe.session.user)
+		email_signature = user.email_signature
+		if email_signature:
+			signature = email_signature.replace('\n', '<br>')
+			message = message + str('<p>'+ signature + '</p>')
 
 		if last_communication:
 			cc = cc or last_communication.cc
@@ -520,11 +529,11 @@ class HDTicket(Document):
 			_attachments.append({"file_url": file_doc.file_url})
 
 		reply_to_email = sender_email.email_id
-		template = (
-			"new_reply_on_customer_portal_notification"
-			if self.via_customer_portal
-			else None
-		)
+		# template = (
+		# 	"new_reply_on_customer_portal_notification"
+		# 	if self.via_customer_portal
+		# 	else None
+		# )
 		args = {
 			"message": message,
 			"portal_link": self.portal_uri,
@@ -544,7 +553,8 @@ class HDTicket(Document):
 				bcc=bcc,
 				cc=cc,
 				communication=communication.name,
-				delayed=send_delayed,
+				# delayed=send_delayed,
+				delayed=False,
 				expose_recipients="header",
 				message=message,
 				now=send_now,
@@ -554,7 +564,7 @@ class HDTicket(Document):
 				reply_to=reply_to_email,
 				sender=reply_to_email,
 				subject=subject,
-				template=template,
+				# template=template,
 				with_container=False,
 			)
 		except Exception as e:
@@ -601,12 +611,16 @@ class HDTicket(Document):
 			contact = frappe.get_doc("Contact",self.contact)
 			skip_email_workflow = self.skip_email_workflow()
 			medium = "" if skip_email_workflow else "Email"
-			subject = f"{self.subject} (#{self.name})"
+			subject = f"{self.subject}"
 			sender = frappe.session.user
-			# recipients = self.raised_by
 			recipients = contact.email_id
 			sender_email = None if skip_email_workflow else self.sender_email()
 			last_communication = self.get_last_communication()
+			user = frappe.get_doc("User",frappe.session.user)
+			email_signature = user.email_signature
+			if email_signature:
+				signature = email_signature.replace('\n', '<br>')
+				message = message + str('<p>'+ signature + '</p>')
 			if last_communication:
 				cc = cc or last_communication.cc
 				bcc = bcc or last_communication.bcc
@@ -666,7 +680,8 @@ class HDTicket(Document):
 					bcc=bcc,
 					cc=cc,
 					communication=communication.name,
-					delayed=send_delayed,
+					# delayed=send_delayed,
+	 				delayed=False,
 					expose_recipients="header",
 					message=message,
 					now=send_now,
