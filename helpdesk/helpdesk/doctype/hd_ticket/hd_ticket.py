@@ -172,9 +172,9 @@ class HDTicket(Document):
 		self.set_feedback_values()
 		self.apply_escalation_rule()
 		self.set_sla()
+		self.set_contact()
 
 		if self.via_customer_portal:
-			self.set_contact()
 			self.set_customer()
 
 	def validate(self):
@@ -460,13 +460,27 @@ class HDTicket(Document):
 	def reply_via_agent(
 		self, message: str, cc: str = None, bcc: str = None, attachments: List[str] = []
 	):
+
+		print('----------------------')
+		print(cc)
+		print(bcc)
+		if self.contact:
+			contact = frappe.get_doc("Contact",self.contact)
+			recipients = contact.email_id
+		else:
+			recipients = self.raised_by
 		skip_email_workflow = self.skip_email_workflow()
 		medium = "" if skip_email_workflow else "Email"
-		subject = f"Re: {self.subject} (#{self.name})"
+		subject = f"Re: {self.subject} "
 		sender = frappe.session.user
-		recipients = self.raised_by
+		recipients = contact.email_id
 		sender_email = None if skip_email_workflow else self.sender_email()
 		last_communication = self.get_last_communication()
+		user = frappe.get_doc("User",frappe.session.user)
+		email_signature = user.email_signature
+		if email_signature:
+			signature = email_signature.replace('\n', '<br>')
+			message = message + str('<p>'+ signature + '</p>')
 
 		if last_communication:
 			cc = cc or last_communication.cc
@@ -515,11 +529,11 @@ class HDTicket(Document):
 			_attachments.append({"file_url": file_doc.file_url})
 
 		reply_to_email = sender_email.email_id
-		template = (
-			"new_reply_on_customer_portal_notification"
-			if self.via_customer_portal
-			else None
-		)
+		# template = (
+		# 	"new_reply_on_customer_portal_notification"
+		# 	if self.via_customer_portal
+		# 	else None
+		# )
 		args = {
 			"message": message,
 			"portal_link": self.portal_uri,
@@ -539,7 +553,8 @@ class HDTicket(Document):
 				bcc=bcc,
 				cc=cc,
 				communication=communication.name,
-				delayed=send_delayed,
+				# delayed=send_delayed,
+				delayed=False,
 				expose_recipients="header",
 				message=message,
 				now=send_now,
@@ -549,41 +564,136 @@ class HDTicket(Document):
 				reply_to=reply_to_email,
 				sender=reply_to_email,
 				subject=subject,
-				template=template,
+				# template=template,
 				with_container=False,
 			)
 		except Exception as e:
 			frappe.throw(_(e))
 
 	@frappe.whitelist()
-	def create_communication_via_contact(self, message, attachments=[]):
-		if self.status == "Replied":
-			self.status = "Open"
-			log_ticket_activity(self.name, "set status to Open")
-			self.save(ignore_permissions=True)
+	def create_communication_via_contact(self, message, attachments=[],cc = None,bcc = None):
+		contact_details = frappe.get_doc("Contact",self.contact)
+		if contact_details.email_id == self.raised_by:
+			if self.status == "Replied":
+				self.status = "Open"
+				log_ticket_activity(self.name, "set status to Open")
+				self.save(ignore_permissions=True)
+			if self.via_customer_portal == 1:
+				sent_or_received = "Sent"
+			else:
+				sent_or_received = "Received"
+			c = frappe.new_doc("Communication")
+			c.communication_type = "Communication"
+			c.communication_medium = "Email"
+			c.sent_or_received = sent_or_received
+			c.email_status = "Open"
+			c.cc = cc
+			c.bcc = bcc
+			c.subject = self.subject
+			c.sender = frappe.session.user
+			c.content = message
+			c.status = "Linked"
+			c.reference_doctype = "HD Ticket"
+			c.reference_name = self.name
+			c.ignore_permissions = True
+			c.ignore_mandatory = True
+			c.save(ignore_permissions=True)
 
-		c = frappe.new_doc("Communication")
-		c.communication_type = "Communication"
-		c.communication_medium = "Email"
-		c.sent_or_received = "Received"
-		c.email_status = "Open"
-		c.subject = "Re: " + self.subject
-		c.sender = frappe.session.user
-		c.content = message
-		c.status = "Linked"
-		c.reference_doctype = "HD Ticket"
-		c.reference_name = self.name
-		c.ignore_permissions = True
-		c.ignore_mandatory = True
-		c.save(ignore_permissions=True)
+			if not len(attachments):
+				return
+			QBFile = frappe.qb.DocType("File")
+			condition_name = [QBFile.name == i["name"] for i in attachments]
+			frappe.qb.update(QBFile).set(QBFile.attached_to_name, c.name).set(
+				QBFile.attached_to_doctype, "Communication"
+			).where(Criterion.any(condition_name)).run()
 
-		if not len(attachments):
-			return
-		QBFile = frappe.qb.DocType("File")
-		condition_name = [QBFile.name == i["name"] for i in attachments]
-		frappe.qb.update(QBFile).set(QBFile.attached_to_name, c.name).set(
-			QBFile.attached_to_doctype, "Communication"
-		).where(Criterion.any(condition_name)).run()
+		else:
+			contact = frappe.get_doc("Contact",self.contact)
+			skip_email_workflow = self.skip_email_workflow()
+			medium = "" if skip_email_workflow else "Email"
+			subject = f"{self.subject}"
+			sender = frappe.session.user
+			recipients = contact.email_id
+			sender_email = None if skip_email_workflow else self.sender_email()
+			last_communication = self.get_last_communication()
+			user = frappe.get_doc("User",frappe.session.user)
+			email_signature = user.email_signature
+			if email_signature:
+				signature = email_signature.replace('\n', '<br>')
+				message = message + str('<p>'+ signature + '</p>')
+			if last_communication:
+				cc = cc or last_communication.cc
+				bcc = bcc or last_communication.bcc
+			if recipients == "Administrator":
+				admin_email = frappe.get_value("User", "Administrator", "email")
+				recipients = admin_email
+			communication = frappe.get_doc(
+				{
+					"bcc": bcc,
+					"cc": cc,
+					"communication_medium": medium,
+					"communication_type": "Communication",
+					"content": message,
+					"doctype": "Communication",
+					"email_account": sender_email.name if sender_email else None,
+					"email_status": "Open",
+					"recipients": recipients,
+					"reference_doctype": "HD Ticket",
+					"reference_name": self.name,
+					"sender": sender,
+					"sent_or_received": "Sent",
+					"status": "Linked",
+					"subject": subject,
+				}
+			)
+			communication.insert(ignore_permissions=True)
+			capture_event("agent_replied")
+			if skip_email_workflow:
+				return
+			if not sender_email:
+				frappe.throw(_("Can not send email. No sender email set up!"))
+
+			_attachments = []
+			for attachment in attachments:
+				file_doc = frappe.get_doc("File", attachment['name'])
+				file_doc.attached_to_name = communication.name
+				file_doc.attached_to_doctype = "Communication"
+				file_doc.save(ignore_permissions=True)
+				_attachments.append({"file_url": file_doc.file_url})
+			reply_to_email = sender_email.email_id
+			args = {
+				"message": message,
+				"portal_link": self.portal_uri,
+				"ticket_id": self.name,
+			}
+			send_delayed = True
+			send_now = False
+
+			if self.instantly_send_email():
+				send_delayed = False
+				send_now = True
+
+			try:
+				frappe.sendmail(
+					args=args,
+					attachments=_attachments,
+					bcc=bcc,
+					cc=cc,
+					communication=communication.name,
+	 				delayed=False,
+					expose_recipients="header",
+					message=message,
+					now=send_now,
+					recipients=recipients,
+					reference_doctype="HD Ticket",
+					reference_name=self.name,
+					reply_to=reply_to_email,
+					sender=reply_to_email,
+					subject=subject,
+					with_container=False,
+				)
+			except Exception as e:
+				frappe.throw(_(e))
 
 	@frappe.whitelist()
 	def mark_seen(self):
