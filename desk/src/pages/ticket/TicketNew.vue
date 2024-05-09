@@ -57,25 +57,63 @@
             </span>
             <span class="inline-flex flex-wrap items-center gap-1">
               <span v-if="showCc" class="mr-2 text-xs text-gray-500">CC:</span>
-              <FormControl
-                v-if="showCc"
-                v-model="cc"
-                type="email"
-                placeholder="hello@example.com"
-                class="w-1/6"
-              />
+              <div v-if="showCc">
+                <span class="inline-flex flex-wrap items-center gap-1">
+                  <Button
+                    v-for="i in cc.split(',').filter(Boolean)"
+                    :key="i"
+                    :label="i"
+                    @click="
+                      () =>
+                        (cc = cc
+                          .split(',')
+                          .filter((s) => s !== i)
+                          .join(','))
+                    "
+                  />
+                  <FormControl
+                    type="text"
+                    placeholder="hello@example.com"
+                    @keyup.prevent.enter="
+                      (event) => {
+                        cc = [...cc.split(','), event.target.value].join(',');
+                        event.target.value = '';
+                      }
+                    "
+                  />
+                </span>
+              </div>
             </span>
             <span class="inline-flex flex-wrap items-center gap-1">
               <span v-if="showBcc" class="mr-2 text-xs text-gray-500"
                 >BCC:</span
               >
-              <FormControl
-                v-if="showBcc"
-                v-model="bcc"
-                type="email"
-                placeholder="hello@example.com"
-                class="w-1/6"
-              />
+              <div v-if="showBcc">
+                <span class="inline-flex flex-wrap items-center gap-1">
+                  <Button
+                    v-for="i in bcc.split(',').filter(Boolean)"
+                    :key="i"
+                    :label="i"
+                    @click="
+                      () =>
+                        (bcc = bcc
+                          .split(',')
+                          .filter((s) => s !== i)
+                          .join(','))
+                    "
+                  />
+                  <FormControl
+                    type="text"
+                    placeholder="hello@example.com"
+                    @keyup.prevent.enter="
+                      (event) => {
+                        bcc = [...bcc.split(','), event.target.value].join(',');
+                        event.target.value = '';
+                      }
+                    "
+                  />
+                </span>
+              </div>
             </span>
 
             <div class="mt-3">
